@@ -1,0 +1,207 @@
+@baseUrl = http://localhost:5263
+@username = demo
+@password = DemoPass-ChangeMe-123!
+
+### ==========================================
+### 1. PUBLIC ENDPOINT
+### ==========================================
+
+### Check that the API is running
+GET {{baseUrl}}/api/public
+
+
+### ==========================================
+### 2. AUTHENTICATION - GET JWT TOKEN
+### ==========================================
+
+# @name login
+POST {{baseUrl}}/api/auth/token
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+### Extract the access token from the login response
+@token = {{login.response.body.$.accessToken}}
+
+
+### ==========================================
+### 3. AUTHENTICATION TESTS
+### ==========================================
+
+### Protected endpoint without a token - expect 401
+GET {{baseUrl}}/api/users
+
+### Protected endpoint with an invalid token - expect 401
+GET {{baseUrl}}/api/users
+Authorization: Bearer invalid.token.value
+
+### Protected endpoint with a valid token - expect 200
+GET {{baseUrl}}/api/users
+Authorization: Bearer {{token}}
+
+
+### ==========================================
+### 4. CREATE USERS - TASK 1
+### ==========================================
+
+### Create the first user - expect 201
+# @name createUser
+POST {{baseUrl}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Sara",
+  "email": "sara@example.com"
+}
+
+### Create a second user - expect 201
+POST {{baseUrl}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Ahmed",
+  "email": "ahmed@example.com"
+}
+
+
+### ==========================================
+### 5. GET USERS - TASK 1
+### ==========================================
+
+### Get all users using default pagination - expect 200
+GET {{baseUrl}}/api/users
+Authorization: Bearer {{token}}
+
+### Get page 1 with 10 users - expect 200
+GET {{baseUrl}}/api/users?page=1&pageSize=10
+Authorization: Bearer {{token}}
+
+### Get page 2 with 1 user per page - expect 200
+GET {{baseUrl}}/api/users?page=2&pageSize=1
+Authorization: Bearer {{token}}
+
+### Get a specific user - expect 200 if ID 1 exists
+GET {{baseUrl}}/api/users/1
+Authorization: Bearer {{token}}
+
+### Get a nonexistent user - expect 404
+GET {{baseUrl}}/api/users/999
+Authorization: Bearer {{token}}
+
+
+### ==========================================
+### 6. VALIDATION AND DEBUGGING - TASK 2
+### ==========================================
+
+### Missing name - expect 400
+POST {{baseUrl}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "",
+  "email": "newuser@example.com"
+}
+
+### Missing email - expect 400
+POST {{baseUrl}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "New User",
+  "email": ""
+}
+
+### Invalid email format - expect 400
+POST {{baseUrl}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "New User",
+  "email": "not-an-email"
+}
+
+### Duplicate email - expect 409 if Sara already exists
+POST {{baseUrl}}/api/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Another Sara",
+  "email": "sara@example.com"
+}
+
+### Invalid page number - expect 400
+GET {{baseUrl}}/api/users?page=0&pageSize=10
+Authorization: Bearer {{token}}
+
+### Invalid page size - expect 400
+GET {{baseUrl}}/api/users?page=1&pageSize=101
+Authorization: Bearer {{token}}
+
+
+### ==========================================
+### 7. UPDATE USERS - TASK 1
+### ==========================================
+
+### Update user ID 1 - expect 200 if it exists
+PUT {{baseUrl}}/api/users/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Sara Ahmed",
+  "email": "sara.ahmed@example.com"
+}
+
+### Update nonexistent user - expect 404
+PUT {{baseUrl}}/api/users/999
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Nobody",
+  "email": "nobody@example.com"
+}
+
+### Update user with another user's email - expect 409
+PUT {{baseUrl}}/api/users/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Sara Ahmed",
+  "email": "ahmed@example.com"
+}
+
+
+### ==========================================
+### 8. DELETE USERS - TASK 1
+### ==========================================
+
+### Delete user ID 2 - expect 204 if it exists
+DELETE {{baseUrl}}/api/users/2
+Authorization: Bearer {{token}}
+
+### Delete the same user again - expect 404
+DELETE {{baseUrl}}/api/users/2
+Authorization: Bearer {{token}}
+
+
+### ==========================================
+### 9. MIDDLEWARE TESTS - TASK 3
+### ==========================================
+
+### Trigger an intentional exception - expect 500
+# Available only in Development environment
+GET {{baseUrl}}/api/test-error
+
+### Verify that the public endpoint still works
+GET {{baseUrl}}/api/public
